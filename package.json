@@ -1,13 +1,14 @@
 {
-  "name": "netlify-react-cms",
-  "version": "0.0.1",
+  "name": "netlify-cms",
+  "version": "0.0.2",
   "description": "Netlify CMS lets content editors work on structured content stored in git",
-  "main": "index.js",
+  "main": "dist/cms.js",
   "scripts": {
     "start": "webpack-dev-server --config webpack.dev.js",
     "test": "NODE_ENV=test mocha --recursive --compilers js:babel-register --require ./test/setup.js",
     "test:watch": "npm test -- --watch",
-    "build": "webpack --config webpack.config.js",
+    "build": "webpack --config webpack.prod.js",
+    "prepublish": "npm run build",
     "storybook": "start-storybook -p 9001",
     "storybook-build": "build-storybook -o dist",
     "lint": "eslint .",
@@ -20,6 +21,7 @@
       "git add"
     ]
   },
+  "files": ["dist/", "README.md"],
   "pre-commit": "lint:staged",
   "keywords": [
     "netlify",
