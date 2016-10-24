@@ -1,5 +1,9 @@
+import { actions as notifActions } from 'redux-notifications';
 import { currentBackend } from '../backends/backend';
-import { getMedia } from '../reducers';
+import { getIntegrationProvider } from '../integrations';
+import { getMedia, selectIntegration } from '../reducers';
+
+const { notifSend } = notifActions;
 
 /*
  * Contant Declarations
@@ -21,91 +25,127 @@ export const ENTRY_PERSIST_REQUEST = 'ENTRY_PERSIST_REQUEST';
 export const ENTRY_PERSIST_SUCCESS = 'ENTRY_PERSIST_SUCCESS';
 export const ENTRY_PERSIST_FAILURE = 'ENTRY_PERSIST_FAILURE';
 
+export const SEARCH_ENTRIES_REQUEST = 'SEARCH_ENTRIES_REQUEST';
+export const SEARCH_ENTRIES_SUCCESS = 'SEARCH_ENTRIES_SUCCESS';
+export const SEARCH_ENTRIES_FAILURE = 'SEARCH_ENTRIES_FAILURE';
 
 /*
  * Simple Action Creators (Internal)
+ * We still need to export them for tests
  */
-function entryLoading(collection, slug) {
+export function entryLoading(collection, slug) {
   return {
     type: ENTRY_REQUEST,
     payload: {
       collection: collection.get('name'),
-      slug: slug
-    }
+      slug,
+    },
   };
 }
 
-function entryLoaded(collection, entry) {
+export function entryLoaded(collection, entry) {
   return {
     type: ENTRY_SUCCESS,
     payload: {
       collection: collection.get('name'),
-      entry: entry
-    }
+      entry,
+    },
   };
 }
 
-function entriesLoading(collection) {
+export function entriesLoading(collection) {
   return {
     type: ENTRIES_REQUEST,
     payload: {
-      collection: collection.get('name')
-    }
+      collection: collection.get('name'),
+    },
   };
 }
 
-function entriesLoaded(collection, entries, pagination) {
+export function entriesLoaded(collection, entries, pagination) {
   return {
     type: ENTRIES_SUCCESS,
     payload: {
       collection: collection.get('name'),
-      entries: entries,
-      pages: pagination
-    }
+      entries,
+      page: pagination,
+    },
   };
 }
 
-function entriesFailed(collection, error) {
+export function entriesFailed(collection, error) {
   return {
     type: ENTRIES_FAILURE,
     error: 'Failed to load entries',
     payload: error.toString(),
-    meta: { collection: collection.get('name') }
+    meta: { collection: collection.get('name') },
   };
 }
 
-function entryPersisting(collection, entry) {
+export function entryPersisting(collection, entry) {
   return {
     type: ENTRY_PERSIST_REQUEST,
     payload: {
-      collection: collection,
-      entry: entry
-    }
+      collectionName: collection.get('name'),
+      entrySlug: entry.get('slug'),
+    },
   };
 }
 
-function entryPersisted(collection, entry) {
+export function entryPersisted(collection, entry) {
   return {
     type: ENTRY_PERSIST_SUCCESS,
     payload: {
-      collection: collection,
-      entry: entry
-    }
+      collectionName: collection.get('name'),
+      entrySlug: entry.get('slug'),
+    },
   };
 }
 
-function entryPersistFail(collection, entry, error) {
+export function entryPersistFail(collection, entry, error) {
   return {
-    type: ENTRIES_FAILURE,
+    type: ENTRY_PERSIST_FAILURE,
     error: 'Failed to persist entry',
-    payload: error.toString()
+    payload: {
+      collectionName: collection.get('name'),
+      entrySlug: entry.get('slug'),
+      error: error.toString(),
+    },
   };
 }
 
-function emmptyDraftCreated(entry) {
+export function emmptyDraftCreated(entry) {
   return {
     type: DRAFT_CREATE_EMPTY,
-    payload: entry
+    payload: entry,
+  };
+}
+
+export function searchingEntries(searchTerm) {
+  return {
+    type: SEARCH_ENTRIES_REQUEST,
+    payload: { searchTerm },
+  };
+}
+
+export function searchSuccess(searchTerm, entries, page) {
+  return {
+    type: SEARCH_ENTRIES_SUCCESS,
+    payload: {
+      searchTerm,
+      entries,
+      page,
+    },
+  };
+}
+
+export function searchFailure(searchTerm, error) {
+  return {
+    type: SEARCH_ENTRIES_FAILURE,
+    payload: {
+      searchTerm,
+      error,
+    },
   };
 }
 
@@ -115,47 +155,54 @@ function emmptyDraftCreated(entry) {
 export function createDraftFromEntry(entry) {
   return {
     type: DRAFT_CREATE_FROM_ENTRY,
-    payload: entry
+    payload: entry,
   };
 }
 
 export function discardDraft() {
   return {
-    type: DRAFT_DISCARD
+    type: DRAFT_DISCARD,
   };
 }
 
 export function changeDraft(entry) {
   return {
     type: DRAFT_CHANGE,
-    payload: entry
+    payload: entry,
   };
 }
 
 /*
  * Exported Thunk Action Creators
  */
-export function loadEntry(collection, slug) {
+
+export function loadEntry(entry, collection, slug) {
   return (dispatch, getState) => {
     const state = getState();
     const backend = currentBackend(state.config);
-
     dispatch(entryLoading(collection, slug));
-    backend.entry(collection, slug)
-      .then((entry) => dispatch(entryLoaded(collection, entry)));
+    let getPromise;
+    if (entry && entry.get('path') && entry.get('partial')) {
+      getPromise = backend.getEntry(entry.get('collection'), entry.get('slug'), entry.get('path'));
+    } else {
+      getPromise = backend.lookupEntry(collection, slug);
+    }
+    return getPromise.then(loadedEntry => dispatch(entryLoaded(collection, loadedEntry)));
   };
 }
 
-export function loadEntries(collection) {
+export function loadEntries(collection, page = 0) {
   return (dispatch, getState) => {
-    if (collection.get('isFetching')) { return; }
+    if (collection.get('isFetching')) {
+      return;
+    }
     const state = getState();
-    const backend = currentBackend(state.config);
-
+    const integration = selectIntegration(state, collection.get('name'), 'listEntries');
+    const provider = integration ? getIntegrationProvider(state.integrations, integration) : currentBackend(state.config);
     dispatch(entriesLoading(collection));
-    backend.entries(collection).then(
-      (response) => dispatch(entriesLoaded(collection, response.entries, response.pagination)),
-      (error) => dispatch(entriesFailed(collection, error))
+    provider.listEntries(collection, page).then(
+      response => dispatch(entriesLoaded(collection, response.entries, response.pagination)),
+      error => dispatch(entriesFailed(collection, error))
     );
   };
 }
@@ -169,17 +216,50 @@ export function createEmptyDraft(collection) {
   };
 }
 
-export function persistEntry(collection, entry) {
+export function persistEntry(collection, entryDraft) {
   return (dispatch, getState) => {
     const state = getState();
     const backend = currentBackend(state.config);
-    const MediaProxies = entry.get('mediaFiles').map(path => getMedia(state, path));
+    const mediaProxies = entryDraft.get('mediaFiles').map(path => getMedia(state, path));
+    const entry = entryDraft.get('entry');
     dispatch(entryPersisting(collection, entry));
-    backend.persistEntry(state.config, collection, entry, MediaProxies.toJS()).then(
-      () => {
+    backend
+      .persistEntry(state.config, collection, entryDraft, mediaProxies.toJS())
+      .then(() => {
+        dispatch(notifSend({
+          message: 'Entry saved',
+          kind: 'success',
+          dismissAfter: 4000,
+        }));
         dispatch(entryPersisted(collection, entry));
-      },
-      (error) => dispatch(entryPersistFail(collection, entry, error))
+      })
+      .catch((error) => {
+        dispatch(notifSend({
+          message: 'Failed to persist entry',
+          kind: 'danger',
+          dismissAfter: 4000,
+        }));
+        dispatch(entryPersistFail(collection, entry, error));
+      });
+  };
+}
+
+export function searchEntries(searchTerm, page = 0) {
+  return (dispatch, getState) => {
+    const state = getState();
+    let collections = state.collections.keySeq().toArray();
+    collections = collections.filter(collection => selectIntegration(state, collection, 'search'));
+    const integration = selectIntegration(state, collections[0], 'search');
+    if (!integration) {
+      dispatch(searchFailure(searchTerm, 'Search integration is not configured.'));
+    }
+    const provider = integration ?
+      getIntegrationProvider(state.integrations, integration)
+      : currentBackend(state.config);
+    dispatch(searchingEntries(searchTerm));
+    provider.search(collections, searchTerm, page).then(
+      response => dispatch(searchSuccess(searchTerm, response.entries, response.pagination)),
+      error => dispatch(searchFailure(searchTerm, error))
     );
   };
 }

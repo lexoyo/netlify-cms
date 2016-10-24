@@ -1,21 +1,25 @@
 import auth from './auth';
 import config from './config';
 import editor from './editor';
-import entries, * as fromEntries  from './entries';
-import editorialWorkflow, * as fromEditorialWorkflow  from './editorialWorkflow';
+import integrations, * as fromIntegrations from './integrations';
+import entries, * as fromEntries from './entries';
+import editorialWorkflow, * as fromEditorialWorkflow from './editorialWorkflow';
 import entryDraft from './entryDraft';
 import collections from './collections';
 import medias, * as fromMedias from './medias';
+import global from './global';
 
 const reducers = {
   auth,
   config,
   collections,
+  integrations,
   editor,
   entries,
   editorialWorkflow,
   entryDraft,
-  medias
+  medias,
+  global,
 };
 
 export default reducers;
@@ -29,11 +33,17 @@ export const selectEntry = (state, collection, slug) =>
 export const selectEntries = (state, collection) =>
   fromEntries.selectEntries(state.entries, collection);
 
+export const selectSearchedEntries = state =>
+  fromEntries.selectSearchedEntries(state.entries);
+
 export const selectUnpublishedEntry = (state, status, slug) =>
   fromEditorialWorkflow.selectUnpublishedEntry(state.editorialWorkflow, status, slug);
 
 export const selectUnpublishedEntries = (state, status) =>
   fromEditorialWorkflow.selectUnpublishedEntries(state.editorialWorkflow, status);
+
+export const selectIntegration = (state, collection, hook) =>
+  fromIntegrations.selectIntegration(state.integrations, collection, hook);
 
 export const getMedia = (state, path) =>
   fromMedias.getMedia(state.medias, path);

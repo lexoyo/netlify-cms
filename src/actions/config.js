@@ -1,8 +1,6 @@
 import yaml from 'js-yaml';
-import _ from 'lodash';
 import { currentBackend } from '../backends/backend';
 import { authenticate } from '../actions/auth';
-import * as publishModes from '../constants/publishModes';
 import * as MediaProxy from '../valueObjects/MediaProxy';
 
 export const CONFIG_REQUEST = 'CONFIG_REQUEST';
@@ -12,13 +10,13 @@ export const CONFIG_FAILURE = 'CONFIG_FAILURE';
 export function configLoaded(config) {
   return {
     type: CONFIG_SUCCESS,
-    payload: config
+    payload: config,
   };
 }
 
 export function configLoading() {
   return {
-    type: CONFIG_REQUEST
+    type: CONFIG_REQUEST,
   };
 }
 
@@ -26,7 +24,7 @@ export function configFailed(err) {
   return {
     type: CONFIG_FAILURE,
     error: 'Error loading config',
-    payload: err
+    payload: err,
   };
 }
 
@@ -47,7 +45,7 @@ export function loadConfig(config) {
 
     fetch('config.yml').then((response) => {
       if (response.status !== 200) {
-        throw `Failed to load config.yml (${response.status})`;
+        throw `Failed to load config.yml (${ response.status })`;
       }
 
       response.text().then(parseConfig).then((config) => {
@@ -65,25 +63,11 @@ export function loadConfig(config) {
 function parseConfig(data) {
   const config = yaml.safeLoad(data);
   if (typeof CMS_ENV === 'string' && config[CMS_ENV]) {
-    for (var key in config[CMS_ENV]) {
+    for (const key in config[CMS_ENV]) {
       if (config[CMS_ENV].hasOwnProperty(key)) {
         config[key] = config[CMS_ENV][key];
       }
     }
-  }
-
-  if (!('publish_mode' in config) || _.values(publishModes).indexOf(config.publish_mode) === -1) {
-    // Make sure there is a publish workflow mode set
-    config.publish_mode = publishModes.SIMPLE;
-  }
-
-  if (!('public_folder' in config)) {
-    // Make sure there is a public folder
-    config.public_folder = config.media_folder;
-  }
-
-  if (config.public_folder.charAt(0) !== '/') {
-    config.public_folder = '/' + config.public_folder;
   }
 
   return config;

@@ -31,32 +31,35 @@ export default class GitHub {
     });
   }
 
-  entries(collection) {
-    return this.api.listFiles(collection.get('folder')).then((files) => {
-      const sem = semaphore(MAX_CONCURRENT_DOWNLOADS);
-      const promises = [];
-      files.map((file) => {
-        promises.push(new Promise((resolve, reject) => {
-          return sem.take(() => this.api.readFile(file.path, file.sha).then((data) => {
-            resolve(createEntry(file.path, file.path.split('/').pop().replace(/\.[^\.]+$/, ''), data));
-            sem.leave();
-          }).catch((err) => {
-            sem.leave();
-            reject(err);
-          }));
-        }));
-      });
-      return Promise.all(promises);
-    }).then((entries) => ({
-      pagination: {},
-      entries
-    }));
+  entriesByFolder(collection) {
+    return this.api.listFiles(collection.get('folder')).then(files => this.entriesByFiles(collection, files));
   }
 
-  entry(collection, slug) {
-    return this.entries(collection).then((response) => (
-      response.entries.filter((entry) => entry.slug === slug)[0]
-    ));
+  entriesByFiles(collection, files) {
+    const sem = semaphore(MAX_CONCURRENT_DOWNLOADS);
+    const promises = [];
+    files.forEach((file) => {
+      promises.push(new Promise((resolve, reject) => {
+        return sem.take(() => this.api.readFile(file.path, file.sha).then((data) => {
+          resolve(
+            {
+              file,
+              data,
+            }
+          );
+          sem.leave();
+        }).catch((err) => {
+          sem.leave();
+          reject(err);
+        }));
+      }));
+    });
+    return Promise.all(promises);
+  }
+
+  // Fetches a single entry.
+  getEntry(collection, slug, path) {
+    return this.api.readFile(path).then(data => createEntry(collection, slug, path, { raw: data }));
   }
 
   persistEntry(entry, mediaFiles = [], options = {}) {
@@ -71,11 +74,16 @@ export default class GitHub {
         promises.push(new Promise((resolve, reject) => {
           const contentKey = branch.ref.split('refs/heads/cms/').pop();
           return sem.take(() => this.api.readUnpublishedBranchFile(contentKey).then((data) => {
-            const entryPath = data.metaData.objects.entry;
-            const entry = createEntry(entryPath, entryPath.split('/').pop().replace(/\.[^\.]+$/, ''), data.file);
-            entry.metaData = data.metaData;
-            resolve(entry);
-            sem.leave();
+            if (data === null || data === undefined) {
+              resolve(null);
+              sem.leave();
+            } else {
+              const entryPath = data.metaData.objects.entry;
+              const entry = createEntry('draft', contentKey, entryPath, { raw: data.file });
+              entry.metaData = data.metaData;
+              resolve(entry);
+              sem.leave();
+            }
           }).catch((err) => {
             sem.leave();
             reject(err);
@@ -84,16 +92,17 @@ export default class GitHub {
       });
       return Promise.all(promises);
     }).then((entries) => {
+      const filteredEntries = entries.filter(entry => entry !== null);
       return {
-        pagination: {},
-        entries
+        pagination: 0,
+        entries: filteredEntries,
       };
     });
   }
 
   unpublishedEntry(collection, slug) {
-    return this.unpublishedEntries().then((response) => (
-      response.entries.filter((entry) => (
+    return this.unpublishedEntries().then(response => (
+      response.entries.filter(entry => (
         entry.metaData && entry.metaData.collection === collection.get('name') && entry.slug === slug
       ))[0]
     ));

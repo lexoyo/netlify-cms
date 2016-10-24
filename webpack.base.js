@@ -1,15 +1,17 @@
+/* eslint global-require: 0 */
+
 const webpack = require('webpack');
 
 module.exports = {
   module: {
     loaders: [
       {
-        test: /\.((png)|(eot)|(woff)|(woff2)|(ttf)|(svg)|(gif))(\?v=\d+\.\d+\.\d+)?$/,
-        loader: 'url-loader?limit=100000'
+        test: /\.(png|eot|woff|woff2|ttf|svg|gif)(\?v=\d+\.\d+\.\d+)?$/,
+        loader: 'url-loader?limit=100000',
       },
       {
         test: /\.json$/,
-        loader: 'json-loader'
+        loader: 'json-loader',
       },
       {
         test: /\.scss$/,
@@ -31,15 +33,21 @@ module.exports = {
             'transform-object-assign',
             'transform-object-rest-spread',
             'lodash',
-            'react-hot-loader/babel'
-          ]
-        }
-      }
-    ]
+            'react-hot-loader/babel',
+          ],
+        },
+      },
+    ],
   },
-
   postcss: [
     require('postcss-import')({ addDependencyTo: webpack }),
-    require('postcss-cssnext')
+    require('postcss-cssnext'),
+  ],
+  plugins: [
+    new webpack.DefinePlugin({
+      'process.env': {
+        NODE_ENV: JSON.stringify(process.env.NODE_ENV),
+      },
+    }),
   ],
 };

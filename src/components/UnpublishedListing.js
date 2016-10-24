@@ -8,28 +8,21 @@ import { status, statusDescriptions } from '../constants/publishModes';
 import styles from './UnpublishedListing.css';
 
 class UnpublishedListing extends React.Component {
-  constructor(props) {
-    super(props);
-    this.renderColumns = this.renderColumns.bind(this);
-    this.handleChangeStatus = this.handleChangeStatus.bind(this);
-    this.requestPublish = this.requestPublish.bind(this);
-  }
-
-  handleChangeStatus(newStatus, dragProps) {
+  handleChangeStatus = (newStatus, dragProps) => {
     const slug = dragProps.slug;
     const collection = dragProps.collection;
     const oldStatus = dragProps.ownStatus;
     this.props.handleChangeStatus(collection, slug, oldStatus, newStatus);
-  }
+  };
 
-  requestPublish(collection, slug, ownStatus) {
+  requestPublish = (collection, slug, ownStatus) => {
     if (ownStatus !== status.last()) return;
     if (window.confirm('Are you sure you want to publish this entry?')) {
       this.props.handlePublish(collection, slug, ownStatus);
     }
-  }
+  };
 
-  renderColumns(entries, column) {
+  renderColumns = (entries, column) => {
     if (!entries) return;
 
     if (!column) {
@@ -46,12 +39,12 @@ class UnpublishedListing extends React.Component {
         /* eslint-enable */
       ));
     } else {
-      return <div>
-        {entries.map(entry => {
+      return (<div>
+        {entries.map((entry) => {
           // Look for an "author" field. Fallback to username on backend implementation;
           const author = entry.getIn(['data', 'author'], entry.getIn(['metaData', 'user']));
           const timeStamp = moment(entry.getIn(['metaData', 'timeStamp'])).format('llll');
-          const link = `/editorialworkflow/${entry.getIn(['metaData', 'collection'])}/${entry.getIn(['metaData', 'status'])}/${entry.get('slug')}`;
+          const link = `/editorialworkflow/${ entry.getIn(['metaData', 'collection']) }/${ entry.getIn(['metaData', 'status']) }/${ entry.get('slug') }`;
           const slug = entry.get('slug');
           const ownStatus = entry.getIn(['metaData', 'status']);
           const collection = entry.getIn(['metaData', 'collection']);
@@ -60,10 +53,10 @@ class UnpublishedListing extends React.Component {
             <DragSource key={slug} slug={slug} collection={collection} ownStatus={ownStatus}>
               <div className={styles.drag}>
                 <Card className={styles.card}>
-                  <h2><Link to={link}>{entry.getIn(['data', 'title'])}</Link> <small>by {author}</small></h2>
-                  <p>Last updated: {timeStamp} by {entry.getIn(['metaData', 'user'])}</p>
+                  <span className={styles.cardHeading}><Link to={link}>{entry.getIn(['data', 'title'])}</Link> <small>by {author}</small></span>
+                  <p className={styles.cardText}>Last updated: {timeStamp} by {entry.getIn(['metaData', 'user'])}</p>
                   {(ownStatus === status.last()) &&
-                    <button onClick={this.requestPublish.bind(this, collection, slug, status)}>Publish now</button>
+                    <button className={styles.button} onClick={this.requestPublish.bind(this, collection, slug, ownStatus)}>Publish now</button>
                   }
                 </Card>
               </div>
@@ -72,9 +65,15 @@ class UnpublishedListing extends React.Component {
           );
         }
         )}
-      </div>;
+      </div>);
     }
-  }
+  };
+
+  static propTypes = {
+    entries: ImmutablePropTypes.orderedMap,
+    handleChangeStatus: PropTypes.func.isRequired,
+    handlePublish: PropTypes.func.isRequired,
+  };
 
   render() {
     const columns = this.renderColumns(this.props.entries);
@@ -82,17 +81,11 @@ class UnpublishedListing extends React.Component {
       <div className={styles.clear}>
         <h1>Editorial Workflow</h1>
         <div className={styles.container}>
-        {columns}
+          {columns}
         </div>
       </div>
     );
   }
 }
-
-UnpublishedListing.propTypes = {
-  entries: ImmutablePropTypes.orderedMap,
-  handleChangeStatus: PropTypes.func.isRequired,
-  handlePublish: PropTypes.func.isRequired,
-};
 
 export default HTML5DragDrop(UnpublishedListing);

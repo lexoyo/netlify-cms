@@ -3,16 +3,12 @@ import Authenticator from '../../lib/netlify-auth';
 
 export default class AuthenticationPage extends React.Component {
   static propTypes = {
-    onLogin: React.PropTypes.func.isRequired
+    onLogin: React.PropTypes.func.isRequired,
   };
 
-  constructor(props) {
-    super(props);
-    this.state = {};
-    this.handleLogin = this.handleLogin.bind(this);
-  }
+  state = {};
 
-  handleLogin(e) {
+  handleLogin = (e) => {
     e.preventDefault();
     let auth;
     if (document.location.host.split(':')[0] === 'localhost') {
@@ -28,14 +24,14 @@ export default class AuthenticationPage extends React.Component {
       }
       this.props.onLogin(data);
     });
-  }
+  };
 
   render() {
     const { loginError } = this.state;
 
-    return <div>
+    return (<div>
       {loginError && <p>{loginError}</p>}
       <p><a href="#" onClick={this.handleLogin}>Login with GitHub</a></p>
-    </div>;
+    </div>);
   }
 }

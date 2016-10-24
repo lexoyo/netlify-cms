@@ -1,7 +1,7 @@
 import expect from 'expect';
 import Immutable from 'immutable';
-import { authenticating, authenticate, authError } from '../../src/actions/auth';
-import { auth } from '../../src/reducers/auth';
+import { authenticating, authenticate, authError } from '../../actions/auth';
+import auth from '../auth';
 
 describe('auth', () => {
   it('should handle an empty state', () => {
@@ -33,7 +33,7 @@ describe('auth', () => {
       auth(undefined, authError(new Error('Bad credentials')))
     ).toEqual(
       Immutable.Map({
-        error: 'Error: Bad credentials'
+        error: 'Error: Bad credentials',
       })
     );
   });

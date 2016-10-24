@@ -1,7 +1,7 @@
 import React from 'react';
 import { storiesOf, action } from '@kadira/storybook';
 
-import FindBar from '../UI/FindBar/FindBar';
+import FindBar from '../FindBar/FindBar';
 
 const CREATE_COLLECTION = 'CREATE_COLLECTION';
 const CREATE_POST = 'CREATE_POST';
@@ -27,16 +27,16 @@ const commands = [
 
 const style = {
   width: 800,
-  margin: 20
+  margin: 20,
 };
 
 storiesOf('FindBar', module)
   .add('Default View', () => (
     <div style={style}>
       <FindBar
-          commands={commands}
-          defaultCommands={[CREATE_POST, CREATE_COLLECTION, OPEN_SETTINGS, HELP, MORE_COMMANDS]}
-          runCommand={action}
+        commands={commands}
+        defaultCommands={[CREATE_POST, CREATE_COLLECTION, OPEN_SETTINGS, HELP, MORE_COMMANDS]}
+        runCommand={action}
       />
     </div>
   ));
