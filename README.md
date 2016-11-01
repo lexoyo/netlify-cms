@@ -50,7 +50,7 @@ Add a `config.yml` file to the `/admin` folder and configure your content model:
 
 ```yaml
 backend:
-  name: github-api
+  name: github
   repo: owner/repo # Path to your Github repository
   branch: master # Branch to update (master by default)
 
